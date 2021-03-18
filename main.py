@@ -48,9 +48,9 @@ async def get_gif(theme):
         return gif[0]
 
 
-async def download_file(file_path):
-    metadata, f = STORAGE.files_download('/' + file_path)
-    file = open(file_path, 'wb')
+async def download_file(file_path, file_name):
+    metadata, f = STORAGE.files_download(file_path)
+    file = open(file_name, 'wb')
     file.write(f.content)
     file.close()
 
@@ -59,22 +59,17 @@ async def put_update(theme):
     response = STORAGE.files_list_folder(path='/Social_interaction_discord_bot')
     if theme == 'all':
         for file_name in response.entries:
-            await download_file(file_name.path_lower)
+            await download_file(file_name.path_lower, file_name.name)
             with open(file_name.name, 'rt') as URL:
                 read_URL = URL.readline()
-                await get_put_database_data(f'INSERT INTO {file_name.name}(URL) '
-                                            f'SELECT DISTINCT {read_URL} '
-                                            f'FROM {theme} WHERE NOT EXISTS '
-                                            f'(SELECT URL FROM {file_name.name} WHERE URL = {read_URL})', 'put')
+                print(read_URL)
+                await get_put_database_data(f"INSERT INTO {file_name.name}(URL) SELECT DISTINCT '{read_URL}' FROM {file_name.name} WHERE NOT EXISTS (SELECT URL FROM {file_name.name} WHERE URL = '{read_URL}')", 'put')
             os.remove(file_name.name)
     else:
-        await download_file(f'/social_interaction_discord_bot/{theme}')
+        await download_file(f'/social_interaction_discord_bot/{theme}', theme)
         with open(theme, 'rt') as URL:
             read_URL = URL.readline()
-            await get_put_database_data(f'INSERT INTO {theme}(URL) '
-                                        f'SELECT DISTINCT {read_URL} '
-                                        f'FROM {theme} WHERE NOT EXISTS '
-                                        f'(SELECT URL FROM {theme} WHERE URL = {read_URL})', 'put')
+            await get_put_database_data(f"INSERT INTO {theme}(URL) SELECT DISTINCT '{read_URL}' FROM {theme} WHERE NOT EXISTS (SELECT URL FROM {theme} WHERE URL = '{read_URL}')", 'put')
             os.remove(theme)
 
 
