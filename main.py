@@ -1,16 +1,22 @@
 import os
-import sqlite3
+import psycopg2
 import discord
 import dropbox
+from contextlib import closing
 from random import randint
 from discord.ext import commands
 
 TOKEN = os.environ['Discord']
-DATABASE = os.environ['DATABASE']
-UNIVERSAL_ANSWER = os.environ['UNIVERSAL_ANSWER']
 STORAGE_TOKEN = os.environ['STORAGE_TOKEN']
+
+DB_NAME = os.environ['DB_NAME']
+DB_USER = os.environ['DB_USER']
+DB_PASSWORD = os.environ['DB_PASSWORD']
+
+UNIVERSAL_ANSWER = os.environ['UNIVERSAL_ANSWER']
 NO = os.environ['NO_NO_NO']
-BOT = commands.Bot(command_prefix='?')
+
+BOT = commands.Bot(command_prefix='|')
 STORAGE = dropbox.Dropbox(STORAGE_TOKEN)
 
 
@@ -21,56 +27,78 @@ def set_rand_color():
     return r, g, b
 
 
-async def get_put_database_data(command, get_or_put):
-    global DATABASE
-    if get_or_put == 'get':
-        db = sqlite3.connect(DATABASE)
-        cursor = db.cursor()
-        cursor.execute(command)
-        c = cursor.fetchone()
-        db.close()
-        return c
-    elif get_or_put == 'put':
-        db = sqlite3.connect(DATABASE)
-        cursor = db.cursor()
-        cursor.execute(command)
-        db.commit()
-        db.close()
-
-
-async def get_gif(theme):
-    end_point = await get_put_database_data(f'select max(id) from {theme}', 'get')
-    if end_point[0] == None:
-        return UNIVERSAL_ANSWER
-    else:
-        rand = randint(1, end_point[0])
-        gif = await get_put_database_data(f'select URL from {theme} where id = {rand}', 'get')
-        return gif[0]
-
-
-async def download_file(file_path, file_name):
+def download_file(file_path, file_name):
     metadata, f = STORAGE.files_download(file_path)
     file = open(file_name, 'wb')
     file.write(f.content)
     file.close()
 
 
+async def get_gif(theme):
+    with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+        with database.cursor() as cursor:
+            cursor.execute(f'select max(id) from {theme};')
+            end_point = cursor.fetchone()[0]
+            if end_point == None:
+                return UNIVERSAL_ANSWER
+            else:
+                rand = randint(1, end_point)
+                cursor.execute(f'select URL from {theme} where id = {rand};')
+                gif = cursor.fetchone()[0]
+                return gif
+
+
 async def put_update(theme):
-    response = STORAGE.files_list_folder(path='/Social_interaction_discord_bot')
+    file_list = STORAGE.files_list_folder(path='/Social_interaction_discord_bot')
     if theme == 'all':
-        for file_name in response.entries:
-            await download_file(file_name.path_lower, file_name.name)
-            with open(file_name.name, 'rt') as URL:
-                read_URL = URL.readline()
-                print(read_URL)
-                await get_put_database_data(f"INSERT INTO {file_name.name}(URL) SELECT DISTINCT '{read_URL}' FROM {file_name.name} WHERE NOT EXISTS (SELECT URL FROM {file_name.name} WHERE URL = '{read_URL}')", 'put')
-            os.remove(file_name.name)
+        for file_name in file_list.entries:
+            with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+                with database.cursor() as cursor:
+                    cursor.execute(f'select URL from {file_name.name}')
+                    values = cursor.fetchall()
+                    db_values = []
+                    for value in values:
+                        db_values.append(value[0])
+                    download_file(file_name.path_lower, file_name.name)
+                    with open(file_name.name, 'rt') as URLs:
+                        for URL in URLs:
+                            if URL not in db_values:
+                                cursor.execute(f"insert into {file_name.name}(URL) values('{URL}')")
+                                database.commit()
+                    os.remove(file_name.name)
     else:
-        await download_file(f'/social_interaction_discord_bot/{theme}', theme)
-        with open(theme, 'rt') as URL:
-            read_URL = URL.readline()
-            await get_put_database_data(f"INSERT INTO {theme}(URL) SELECT DISTINCT '{read_URL}' FROM {theme} WHERE NOT EXISTS (SELECT URL FROM {theme} WHERE URL = '{read_URL}')", 'put')
-            os.remove(theme)
+        with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+            with database.cursor() as cursor:
+                cursor.execute(f'select URL from {theme}')
+                values = cursor.fetchall()
+                db_values = []
+                for value in values:
+                    db_values.append(value[0])
+                download_file(f'/social_interaction_discord_bot/{theme}', theme)
+                with open(theme) as URLs:
+                    for URL in URLs:
+                        if URL not in db_values:
+                            cursor.execute(f"insert into {theme}(URL) values('{URL}')")
+                            database.commit()
+                    os.remove(theme)
+
+
+@BOT.command()
+async def gachi_fight(ctx, arg: discord.User):
+    await ctx.message.delete()
+    q = await BOT.fetch_user(int(arg.id))
+    gif = await get_gif('gachi_fight')
+    title = f'{ctx.message.author.mention} укусил за жепу {arg.mention}'
+    r, g, b = set_rand_color()
+    embed = discord.Embed(
+        description=title,
+        colour=discord.Colour.from_rgb(r, g, b))
+    print(q)
+    if str(q) == "AlexGeek#2787":
+        embed.set_image(url=NO)
+    else:
+        embed.set_image(url=gif)
+    await ctx.send(embed=embed)
 
 
 @BOT.command()
@@ -96,24 +124,6 @@ async def press_f(ctx, arg):
         description=title,
         colour=discord.Colour.from_rgb(r, g, b))
     embed.set_image(url=gif)
-    await ctx.send(embed=embed)
-
-
-@BOT.command()
-async def gachi_fight(ctx, arg: discord.User):
-    await ctx.message.delete()
-    q = await BOT.fetch_user(int(arg.id))
-    gif = await get_gif('gachi_fight')
-    title = f'{ctx.message.author.mention} ? {arg.mention}'
-    r, g, b = set_rand_color()
-    embed = discord.Embed(
-        description=title,
-        colour=discord.Colour.from_rgb(r, g, b))
-    print(q)
-    if str(q) == "AlexGeek#2787":
-        embed.set_image(url=NO)
-    else:
-        embed.set_image(url=gif)
     await ctx.send(embed=embed)
 
 
