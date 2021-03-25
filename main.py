@@ -1,10 +1,13 @@
 import os
+import ast
 import psycopg2
 import discord
 import dropbox
+import help_template
 from contextlib import closing
 from random import randint
 from discord.ext import commands
+
 
 TOKEN = os.environ['Discord']
 STORAGE_TOKEN = os.environ['STORAGE_TOKEN']
@@ -13,12 +16,14 @@ DB_NAME = os.environ['DB_NAME']
 DB_USER = os.environ['DB_USER']
 DB_PASSWORD = os.environ['DB_PASSWORD']
 
+GOD = os.environ['GOD']
+MODERATORS = ast.literal_eval(os.environ['MODERATORS'])
 UNIVERSAL_ANSWER = os.environ['UNIVERSAL_ANSWER']
 NO = os.environ['NO_NO_NO']
 
-BOT = commands.Bot(command_prefix='|')
+BOT = commands.Bot(command_prefix='|', help_command=None)
 STORAGE = dropbox.Dropbox(STORAGE_TOKEN)
-
+HELP = help_template.help()
 
 def set_rand_color():
     r = randint(0, 255)
@@ -83,18 +88,41 @@ async def put_update(theme):
                     os.remove(theme)
 
 
+async def re_gen_db():
+    file_list = STORAGE.files_list_folder(path='/Social_interaction_discord_bot')
+    with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+        with database.cursor() as cursor:
+            for table_name in file_list.entries:
+                cursor.execute(f'drop table {table_name.name};')
+                database.commit()
+                cursor.execute(f'create table {table_name.name}(ID serial primary key, URL text);')
+                database.commit()
+
+@BOT.command()
+async def help(ctx):
+    await ctx.message.delete()
+    if ctx.message.author.name + '#' + ctx.message.author.discriminator in GOD:
+        embed = HELP.god_template(set_rand_color())
+        await ctx.author.send(embed=embed)
+    elif ctx.message.author.name + '#' + ctx.message.author.discriminator in MODERATORS:
+        embed = HELP.moderator_template(set_rand_color())
+        await ctx.author.send(embed=embed)
+    else:
+        embed = HELP.regular_user_template(set_rand_color())
+        await ctx.send(embed=embed)
+
+
 @BOT.command()
 async def gachi_fight(ctx, arg: discord.User):
     await ctx.message.delete()
     q = await BOT.fetch_user(int(arg.id))
     gif = await get_gif('gachi_fight')
-    title = f'{ctx.message.author.mention} укусил за жепу {arg.mention}'
+    title = f'{ctx.message.author.mention} делает кусь за жепу {arg.mention}'
     r, g, b = set_rand_color()
     embed = discord.Embed(
         description=title,
         colour=discord.Colour.from_rgb(r, g, b))
-    print(q)
-    if str(q) == "AlexGeek#2787":
+    if str(q) == "ALT-MIND#2787":
         embed.set_image(url=NO)
     else:
         embed.set_image(url=gif)
@@ -143,9 +171,17 @@ async def hug(ctx, arg):
 @BOT.command()
 async def update_db(ctx, arg):
     await ctx.message.delete()
-    await ctx.send('Обновляю базу данных')
-    await put_update(arg)
-    await ctx.send('База данных обновленна')
+    if ctx.message.author.name + '#' + ctx.message.author.discriminator in MODERATORS:
+        await ctx.author.send('Обновляю базу данных')
+        await put_update(arg)
+        await ctx.author.send('База данных обновленна')
 
+@BOT.command()
+async def regenerate_db(ctx):
+    if ctx.message.author.name + '#' + ctx.message.author.discriminator in GOD:
+        await ctx.message.delete()
+        await ctx.author.send('Регенерирую базу данных')
+        await re_gen_db()
+        await ctx.author.send('Регенерация прошла успешно')
 
 BOT.run(TOKEN)
