@@ -12,9 +12,7 @@ from discord.ext import commands
 TOKEN = os.environ['Discord']
 STORAGE_TOKEN = os.environ['STORAGE_TOKEN']
 
-DB_NAME = os.environ['DB_NAME']
-DB_USER = os.environ['DB_USER']
-DB_PASSWORD = os.environ['DB_PASSWORD']
+DATABASE_URL = os.environ['DATABASE_URL']
 
 GOD = os.environ['GOD']
 MODERATORS = ast.literal_eval(os.environ['MODERATORS'])
@@ -40,7 +38,7 @@ def download_file(file_path, file_name):
 
 
 async def get_gif(theme):
-    with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+    with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
         with database.cursor() as cursor:
             cursor.execute(f'select max(id) from {theme};')
             end_point = cursor.fetchone()[0]
@@ -57,7 +55,7 @@ async def put_update(theme):
     file_list = STORAGE.files_list_folder(path='/Social_interaction_discord_bot')
     if theme == 'all':
         for file_name in file_list.entries:
-            with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+            with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
                 with database.cursor() as cursor:
                     cursor.execute(f'select URL from {file_name.name}')
                     values = cursor.fetchall()
@@ -72,7 +70,7 @@ async def put_update(theme):
                                 database.commit()
                     os.remove(file_name.name)
     else:
-        with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+        with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
             with database.cursor() as cursor:
                 cursor.execute(f'select URL from {theme}')
                 values = cursor.fetchall()
@@ -90,7 +88,7 @@ async def put_update(theme):
 
 async def re_gen_db():
     file_list = STORAGE.files_list_folder(path='/Social_interaction_discord_bot')
-    with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
+    with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
         with database.cursor() as cursor:
             for table_name in file_list.entries:
                 cursor.execute(f'drop table if exists {table_name.name};')

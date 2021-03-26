@@ -1,2 +1,3 @@
 discord.py
 dropbox
+psycopg2-binary
