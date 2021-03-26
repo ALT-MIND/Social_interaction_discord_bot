@@ -93,7 +93,7 @@ async def re_gen_db():
     with closing(psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)) as database:
         with database.cursor() as cursor:
             for table_name in file_list.entries:
-                cursor.execute(f'drop table {table_name.name};')
+                cursor.execute(f'drop table if exists {table_name.name};')
                 database.commit()
                 cursor.execute(f'create table {table_name.name}(ID serial primary key, URL text);')
                 database.commit()
