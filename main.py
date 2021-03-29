@@ -179,9 +179,10 @@ async def ave_sun(ctx):
     await ctx.message.delete()
     gif = await get_gif('ave_sun')
     r, g, b = set_rand_color()
+    emoji = discord.utils.get(BOT.emojis, name='ave_sun')
     description = f'{ctx.message.author.mention} восславляет СОЛНЦЕ'
     embed = discord.Embed(
-        title=':ave_sun: AVE SUN :ave_sun:',
+        title=f'{emoji} AVE SUN {emoji}',
         description=description,
         colour=discord.Colour.from_rgb(r, g, b))
     embed.set_image(url=gif)
