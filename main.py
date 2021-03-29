@@ -7,7 +7,7 @@ import help_template
 from contextlib import closing
 from random import randint
 from discord.ext import commands
-
+from discord.utils import get
 
 TOKEN = os.environ['Discord']
 STORAGE_TOKEN = os.environ['STORAGE_TOKEN']
@@ -24,6 +24,7 @@ NO = os.environ['NO_NO_NO']
 BOT = commands.Bot(command_prefix='|', help_command=None)
 STORAGE = dropbox.Dropbox(STORAGE_TOKEN)
 HELP = help_template.help()
+
 
 def set_rand_color():
     r = randint(0, 255)
@@ -44,13 +45,13 @@ async def get_gif(theme):
         with database.cursor() as cursor:
             cursor.execute(f'select max(id) from {theme};')
             end_point = cursor.fetchone()[0]
-            if end_point == None:
-                return UNIVERSAL_ANSWER
-            else:
+            if end_point:
                 rand = randint(1, end_point)
                 cursor.execute(f'select URL from {theme} where id = {rand};')
                 gif = cursor.fetchone()[0]
                 return gif
+            else:
+                return UNIVERSAL_ANSWER
 
 
 async def put_update(theme):
@@ -97,6 +98,12 @@ async def re_gen_db():
                 database.commit()
                 cursor.execute(f'create table {table_name.name}(ID serial primary key, URL text);')
                 database.commit()
+    await put_update('all')
+
+@BOT.event
+async def on_ready():
+    await BOT.change_presence(activity=discord.Game(name='|help'))
+
 
 @BOT.command()
 async def help(ctx):
@@ -112,15 +119,16 @@ async def help(ctx):
         await ctx.send(embed=embed)
 
 
+# -----------------social_interaction
 @BOT.command()
 async def gachi_fight(ctx, arg: discord.User):
     await ctx.message.delete()
     q = await BOT.fetch_user(int(arg.id))
     gif = await get_gif('gachi_fight')
-    title = f'{ctx.message.author.mention} делает кусь за жепу {arg.mention}'
+    description = f'{ctx.message.author.mention} делает кусь за жепу {arg.mention}'
     r, g, b = set_rand_color()
     embed = discord.Embed(
-        description=title,
+        description=description,
         colour=discord.Colour.from_rgb(r, g, b))
     if str(q) == "ALT-MIND#2787":
         embed.set_image(url=NO)
@@ -130,13 +138,13 @@ async def gachi_fight(ctx, arg: discord.User):
 
 
 @BOT.command()
-async def handshake(ctx, arg, ):
+async def handshake(ctx, arg):
     await ctx.message.delete()
     gif = await get_gif('handshake')
-    title = f'{ctx.message.author.mention} пожал руку {arg} :handshake:'
+    description = f'{ctx.message.author.mention} пожал руку {arg} :handshake:'
     r, g, b = set_rand_color()
     embed = discord.Embed(
-        description=title,
+        description=description,
         colour=discord.Colour.from_rgb(r, g, b))
     embed.set_image(url=gif)
     await ctx.send(embed=embed)
@@ -146,10 +154,10 @@ async def handshake(ctx, arg, ):
 async def press_f(ctx, arg):
     await ctx.message.delete()
     gif = await get_gif('press_f')
-    title = f'{ctx.message.author.mention} pay respects {arg}'
+    description = f'{ctx.message.author.mention} pay respects {arg}'
     r, g, b = set_rand_color()
     embed = discord.Embed(
-        description=title,
+        description=description,
         colour=discord.Colour.from_rgb(r, g, b))
     embed.set_image(url=gif)
     await ctx.send(embed=embed)
@@ -159,15 +167,70 @@ async def press_f(ctx, arg):
 async def hug(ctx, arg):
     await ctx.message.delete()
     gif = await get_gif('hug')
-    title = f':hugging:  {ctx.message.author.mention} обнимает {arg} :hugging: '
+    description = f':hugging:  {ctx.message.author.mention} обнимает {arg} :hugging: '
     r, g, b = set_rand_color()
     embed = discord.Embed(
-        description=title,
+        description=description,
         colour=discord.Colour.from_rgb(r, g, b))
     embed.set_image(url=gif)
     await ctx.send(embed=embed)
 
 
+@BOT.command()
+async def ave_sun(ctx):
+    await ctx.message.delete()
+    gif = await get_gif('ave_sun')
+    r, g, b = set_rand_color()
+    description = f'{ctx.message.author.mention} восславляет СОЛНЦЕ'
+    embed = discord.Embed(
+        title=':ave_sun: AVE SUN :ave_sun:',
+        description=description,
+        colour=discord.Colour.from_rgb(r, g, b))
+    embed.set_image(url=gif)
+    await ctx.send(embed=embed)
+
+
+@BOT.command()
+async def morning(ctx, arg):
+    await ctx.message.delete()
+    r, g, b = set_rand_color()
+    gif = await get_gif('morning')
+    if arg == '@everyone':
+        if get(ctx.message.author.roles, name="Программист"):
+            description = f'{ctx.message.author.mention} желает доброго утра {arg}'
+        else:
+            description = f'{ctx.message.author.mention} желает доброго утра'
+    else:
+        description = f'{ctx.message.author.mention} желает доброго утра {arg}'
+    embed = discord.Embed(
+        title=':sunrise: Доброе утро :sunrise:',
+        description=description,
+        colour=discord.Colour.from_rgb(r, g, b))
+    embed.set_image(url=gif)
+    await ctx.send(embed=embed)
+
+
+@BOT.command()
+async def evening(ctx, arg):
+    await ctx.message.delete()
+    r, g, b = set_rand_color()
+    gif = await get_gif('evening')
+    if arg == '@everyone':
+        if get(ctx.message.author.roles, name="Программист"):
+            description = f'{ctx.message.author.mention} желает доброго утра {arg}'
+        else:
+            description = f'{ctx.message.author.mention} желает доброго утра'
+    else:
+        description = f'{ctx.message.author.mention} желает доброго утра {arg}'
+    embed = discord.Embed(
+        title=':sunrise: Доброе утро :sunrise:',
+        description=description,
+        colour=discord.Colour.from_rgb(r, g, b))
+    embed.set_image(url=gif)
+    await ctx.send(embed=embed)
+# -----------------social interaction
+
+# -----------------moderation functions
 @BOT.command()
 async def update_db(ctx, arg):
     await ctx.message.delete()
@@ -175,7 +238,10 @@ async def update_db(ctx, arg):
         await ctx.author.send('Обновляю базу данных')
         await put_update(arg)
         await ctx.author.send('База данных обновленна')
+# -----------------moderation functions
 
+
+# ----------------- gods functions
 @BOT.command()
 async def regenerate_db(ctx):
     if ctx.message.author.name + '#' + ctx.message.author.discriminator in GOD:
@@ -183,5 +249,13 @@ async def regenerate_db(ctx):
         await ctx.author.send('Регенерирую базу данных')
         await re_gen_db()
         await ctx.author.send('Регенерация прошла успешно')
+
+
+# ----------------- gods functions
+
+@BOT.command()
+async def test(context):
+    pass
+
 
 BOT.run(TOKEN)
