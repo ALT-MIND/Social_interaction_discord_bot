@@ -112,12 +112,12 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.message.delete()
         message = await ctx.send(f'{ctx.message.author.mention} ты забыл упомянуть кого-либо')
-        await asyncio.sleep(3)
+        await asyncio.sleep(5)
         await message.delete()
     elif isinstance(error, commands.CommandError):
         await ctx.message.delete()
         message = await ctx.send(f'{ctx.message.author.mention} я незнаю что ты хочеш, посмотри |help')
-        await asyncio.sleep(3)
+        await asyncio.sleep(5)
         await message.delete()
 
 
