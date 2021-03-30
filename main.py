@@ -216,13 +216,13 @@ async def evening(ctx, arg):
     gif = await get_gif('evening')
     if arg == '@everyone':
         if get(ctx.message.author.roles, name="Программист"):
-            description = f'{ctx.message.author.mention} желает доброго утра {arg}'
+            description = f'{ctx.message.author.mention} желает доброй ночи {arg}'
         else:
-            description = f'{ctx.message.author.mention} желает доброго утра'
+            description = f'{ctx.message.author.mention} желает доброй ночи'
     else:
-        description = f'{ctx.message.author.mention} желает доброго утра {arg}'
+        description = f'{ctx.message.author.mention} желает доброй ночи {arg}'
     embed = discord.Embed(
-        title=':sunrise: Доброе утро :sunrise:',
+        title=':milky_way: Доброй ночи :milky_way:',
         description=description,
         colour=discord.Colour.from_rgb(r, g, b))
     embed.set_image(url=gif)
@@ -251,10 +251,5 @@ async def regenerate_db(ctx):
 
 
 # ----------------- gods functions
-
-@BOT.command()
-async def test(context):
-    pass
-
 
 BOT.run(TOKEN)
