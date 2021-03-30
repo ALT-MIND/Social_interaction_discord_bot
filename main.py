@@ -272,7 +272,7 @@ async def warn(ctx, member, *args):
         embed.add_field(name="Время в UTC", value=str(ctx.message.created_at)[:-7])
         embed.add_field(name="Причина", value=reason)
         embed.colour = discord.Colour.red()
-        alley_channel = BOT.get_channel(816347737351127074)
+        alley_channel = BOT.get_channel(825625052287467571)
         await alley_channel.send(embed=embed)
 # -----------------moderation functions
 
