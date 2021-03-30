@@ -1,5 +1,6 @@
 import os
 import ast
+import asyncio
 import psycopg2
 import discord
 import dropbox
@@ -98,9 +99,24 @@ async def re_gen_db():
                 database.commit()
     await put_update('all')
 
+
 @BOT.event
 async def on_ready():
     await BOT.change_presence(activity=discord.Game(name='|help'))
+
+
+@BOT.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.message.delete()
+        message = await ctx.send(f'{ctx.message.author.mention} ты забыл упомянуть кого-либо')
+        await asyncio.sleep(3)
+        await message.delete()
+    elif isinstance(error, commands.CommandError):
+        await ctx.message.delete()
+        message = await ctx.send(f'{ctx.message.author.mention} я незнаю что ты хочеш, посмотри |help')
+        await asyncio.sleep(3)
+        await message.delete()
 
 
 @BOT.command()
