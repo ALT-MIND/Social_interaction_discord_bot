@@ -211,7 +211,7 @@ async def morning(ctx, arg):
     r, g, b = set_rand_color()
     gif = await get_gif('morning')
     if arg == '@everyone':
-        if get(ctx.message.author.roles, name="Программист"):
+        if get(ctx.message.author.roles, name="Dungeon Master"):
             description = f'{ctx.message.author.mention} желает доброго утра {arg}'
         else:
             description = f'{ctx.message.author.mention} желает доброго утра'
@@ -231,7 +231,7 @@ async def evening(ctx, arg):
     r, g, b = set_rand_color()
     gif = await get_gif('evening')
     if arg == '@everyone':
-        if get(ctx.message.author.roles, name="Программист"):
+        if get(ctx.message.author.roles, name="Dungeon Master"):
             description = f'{ctx.message.author.mention} желает доброй ночи {arg}'
         else:
             description = f'{ctx.message.author.mention} желает доброй ночи'
@@ -253,6 +253,27 @@ async def update_db(ctx, arg):
         await ctx.author.send('Обновляю базу данных')
         await put_update(arg)
         await ctx.author.send('База данных обновленна')
+
+
+@BOT.command()
+async def warn(ctx, member, *args):
+    await ctx.message.delete()
+    if get(ctx.message.author.roles, name='Серый Кардинал'):
+        q = " ".join(args)
+        w = q.split(',')
+        reason = ""
+        for i in w:
+            reason += i + '\n'
+        n = "\n"
+        await ctx.send(f'{member} был предупреждён {ctx.author.mention} Причина: {n + reason}')
+        embed = discord.Embed(title="Предупреждение")
+        embed.add_field(name="Модератор", value=ctx.author.mention)
+        embed.add_field(name="Предупреждённый", value=member)
+        embed.add_field(name="Время в UTC", value=str(ctx.message.created_at)[:-7])
+        embed.add_field(name="Причина", value=reason)
+        embed.colour = discord.Colour.red()
+        alley_channel = BOT.get_channel(816347737351127074)
+        await alley_channel.send(embed=embed)
 # -----------------moderation functions
 
 
@@ -264,8 +285,6 @@ async def regenerate_db(ctx):
         await ctx.author.send('Регенерирую базу данных')
         await re_gen_db()
         await ctx.author.send('Регенерация прошла успешно')
-
-
 # ----------------- gods functions
 
 BOT.run(TOKEN)
