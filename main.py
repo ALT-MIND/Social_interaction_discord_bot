@@ -258,7 +258,7 @@ async def update_db(ctx, arg):
 @BOT.command()
 async def warn(ctx, member, *args):
     await ctx.message.delete()
-    if get(ctx.message.author.roles, name='Серый Кардинал'):
+    if get(ctx.message.author.roles, name='Серый Кардинал') or get(ctx.message.author.roles, name='Памагат'):
         q = " ".join(args)
         w = q.split(',')
         reason = ""
