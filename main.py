@@ -114,8 +114,8 @@ async def on_command_error(ctx, error):
         await message.delete()
     elif isinstance(error, commands.CommandError):
         await ctx.message.delete()
-        message = await ctx.send(f'{ctx.message.author.mention} я незнаю что ты хочеш, посмотри |help')
-        await asyncio.sleep(5)
+        message = await ctx.send(f'{ctx.message.author.mention} я незнаю что ты хочешь, посмотри |help')
+        await asyncio.sleep(10)
         await message.delete()
 
 
