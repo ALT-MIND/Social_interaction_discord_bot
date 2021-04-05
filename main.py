@@ -135,10 +135,10 @@ async def help(ctx):
 
 # -----------------social_interaction
 @BOT.command()
-async def gachi_fight(ctx, arg: discord.User):
+async def bite_ass(ctx, arg: discord.User):
     await ctx.message.delete()
     q = await BOT.fetch_user(int(arg.id))
-    gif = await get_gif('gachi_fight')
+    gif = await get_gif('bite_ass')
     description = f'{ctx.message.author.mention} делает кусь за жепу {arg.mention}'
     r, g, b = set_rand_color()
     embed = discord.Embed(
