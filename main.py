@@ -156,7 +156,7 @@ async def job():
                         embed.add_field(name="Нарушитель", value=member.mention, inline=True)
                         embed.add_field(name="Количество отработок", value=num_of_cor_labor,
                                         inline=True)
-                        embed.add_field(name=" В данный момент в slave?", value=":negative_squared_cross_mark:",
+                        embed.add_field(name=" В данный момент в slave?", value=":x:",
                                         inline=True)
                         embed.add_field(name="Количество полученных предупреждений",
                                         value="0", inline=False)
@@ -356,7 +356,7 @@ async def warn(ctx, member: discord.Member, *args):
                         embed.add_field(name="Нарушитель", value=member.mention, inline=True)
                         embed.add_field(name="Количество отработок", value=num_of_cor_labor,
                                         inline=True)
-                        embed.add_field(name=" В данный момент в slave?", value=":negative_squared_cross_mark:",
+                        embed.add_field(name=" В данный момент в slave?", value=":х:",
                                         inline=True)
                         embed.add_field(name="Количество полученных предупреждений",
                                         value=str(num_of_warn + len(new_evils)), inline=False)
@@ -372,7 +372,7 @@ async def warn(ctx, member: discord.Member, *args):
                     embed.add_field(name="Нарушитель", value=member.mention, inline=True)
                     embed.add_field(name="Количество отработок", value='0',
                                     inline=True)
-                    embed.add_field(name=" В данный момент в slave?", value=":negative_squared_cross_mark: ",
+                    embed.add_field(name=" В данный момент в slave?", value=":x: ",
                                     inline=True)
                     embed.add_field(name="Количество полученных предупреждений",
                                     value=str(len(new_evils)), inline=False)
