@@ -1,14 +1,16 @@
 import discord
+
 regular_user = [["|hug  <упоминание человека>", 'Обними любимого человечка'],
-                ["|handshake  <упоминание человека>",'#поприветствуй друга'],
+                ["|handshake  <упоминание человека>", '#поприветствуй друга'],
                 ["|press_f  <упоминание человека>", 'Press F to pay respect'],
                 ["|bite_ass  <упоминание человека>", 'Сделай кусь за жепу'],
                 ['|ave_sun', 'Восславь СОЛНЦЕ'],
                 ['|morning <упоминание человека or @everyone>', 'Пожелайте гражданам доброго утра'],
                 ['|evening <упоминание человека or @everyone>', 'Пожелайте гражданам доброй ночи']]
 moderator = [["|update_db  <all или ОДНА из тем>", "Обновление базы данных мемасиков"],
-             ["|warn <<упоминание человека> <через запятую перечисли все грехи>",
-              "Добавляет в Аллею славы новое предупреждение"]]
+             ["|warn <упоминание человека>  <причина или причина через запятую>",
+        "Выдает предупреждение пользователю. По достижении 4 предупреждений отправляет человека в slave на 24 часа\n" +
+              "**Внимание! Не ставь пробел после запятой. Причина без пробела и с пробелом - две разные причины**"]]
 
 god = [["|regenerate_db", 'Регенерация базы данных']]
 
@@ -22,6 +24,7 @@ class help:
         for date in user_name:
             embed.add_field(name=date[0], value=date[1], inline=False)
         return embed
+
     def regular_user_template(self, color):
         r, g, b = color
         embed = discord.Embed(title="**Похоже кому-то нужна помощь**",
@@ -29,7 +32,6 @@ class help:
                               colour=discord.Colour.from_rgb(r, g, b))
         embed = self.generate_embed(embed, regular_user)
         return embed
-
 
     def moderator_template(self, color):
         r, g, b = color

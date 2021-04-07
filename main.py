@@ -1,14 +1,15 @@
 import os
 import ast
-import asyncio
 import psycopg2
+import asyncio
 import discord
 import dropbox
-import help_template
+from datetime import datetime, timedelta, timezone
 from contextlib import closing
 from random import randint
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.utils import get
+import help_template
 
 TOKEN = os.environ['Discord']
 STORAGE_TOKEN = os.environ['STORAGE_TOKEN']
@@ -20,7 +21,11 @@ MODERATORS = ast.literal_eval(os.environ['MODERATORS'])
 UNIVERSAL_ANSWER = os.environ['UNIVERSAL_ANSWER']
 NO = os.environ['NO_NO_NO']
 
-BOT = commands.Bot(command_prefix='|', help_command=None)
+GUILD = None
+GUILD_ID = os.environ['GUILD_ID']
+ALLEY_CHANNEL = os.environ['ALLEY_CHANNEL']
+INTENTS = discord.Intents.all()
+BOT = commands.Bot(command_prefix='|', help_command=None, intents=INTENTS)
 STORAGE = dropbox.Dropbox(STORAGE_TOKEN)
 HELP = help_template.help()
 
@@ -59,7 +64,7 @@ async def put_update(theme):
         for file_name in file_list.entries:
             with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
                 with database.cursor() as cursor:
-                    cursor.execute(f'select URL from {file_name.name}')
+                    cursor.execute(f'select URL from {file_name.name};')
                     values = cursor.fetchall()
                     db_values = []
                     for value in values:
@@ -68,13 +73,13 @@ async def put_update(theme):
                     with open(file_name.name, 'rt') as URLs:
                         for URL in URLs:
                             if URL not in db_values:
-                                cursor.execute(f"insert into {file_name.name}(URL) values('{URL}')")
+                                cursor.execute(f"insert into {file_name.name}(URL) values('{URL}');")
                                 database.commit()
                     os.remove(file_name.name)
     else:
         with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
             with database.cursor() as cursor:
-                cursor.execute(f'select URL from {theme}')
+                cursor.execute(f'select URL from {theme};')
                 values = cursor.fetchall()
                 db_values = []
                 for value in values:
@@ -83,7 +88,7 @@ async def put_update(theme):
                 with open(theme) as URLs:
                     for URL in URLs:
                         if URL not in db_values:
-                            cursor.execute(f"insert into {theme}(URL) values('{URL}')")
+                            cursor.execute(f"insert into {theme}(URL) values('{URL}');")
                             database.commit()
                     os.remove(theme)
 
@@ -102,7 +107,10 @@ async def re_gen_db():
 
 @BOT.event
 async def on_ready():
+    global GUILD
     await BOT.change_presence(activity=discord.Game(name='|help'))
+    GUILD = BOT.get_guild(int(GUILD_ID))
+    job.start()
 
 
 @BOT.event
@@ -117,6 +125,50 @@ async def on_command_error(ctx, error):
         message = await ctx.send(f'{ctx.message.author.mention} я незнаю что ты хочешь, посмотри |help')
         await asyncio.sleep(10)
         await message.delete()
+
+
+@tasks.loop(seconds=10)
+async def job():
+    global GUILD
+    with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
+        with database.cursor() as cursor:
+            cursor.execute('SELECT user_id FROM potential_slave;')
+            dates = cursor.fetchall()
+            try:
+                usernames = [x[0] for x in dates]
+                cursor.execute('SELECT time_to_get_out_of_slavery FROM potential_slave;')
+                time = [x[0] for x in cursor.fetchall()]
+                slaves = dict(zip(usernames, time))
+                time_now = datetime.isoformat(datetime.now(timezone.utc) +
+                                              timedelta(hours=3), sep=' ').split('.')[0]
+                for slave in slaves:
+                    if slaves[slave] == None:
+                        pass
+                    elif slaves[slave] < time_now:
+                        cursor.execute(f'select warning_message_id,evils,number_of_correctional_labor,' +
+                                       f"number_of_warning from potential_slave where user_id ='{slave}';")
+                        warn_message_id, evils, num_of_cor_labor, num_of_warn = cursor.fetchall()[0]
+                        alley_channel = GUILD.get_channel(int(ALLEY_CHANNEL))
+                        warn_message = await alley_channel.fetch_message(warn_message_id)
+                        member = await GUILD.fetch_member(slave)
+                        await member.remove_roles(get(member.guild.roles, name="Slave"))
+                        embed = discord.Embed(title="Карта нарушителя", color=0xcbff00)
+                        embed.add_field(name="Нарушитель", value=member.mention, inline=True)
+                        embed.add_field(name="Количество отработок", value=num_of_cor_labor,
+                                        inline=True)
+                        embed.add_field(name=" В данный момент в slave?", value=":negative_squared_cross_mark:",
+                                        inline=True)
+                        embed.add_field(name="Количество полученных предупреждений",
+                                        value="0", inline=False)
+                        embed.add_field(name="Нарушения:", value=evils.replace(',', '\n'), inline=False)
+                        await warn_message.edit(embed=embed)
+                        cursor.execute(f'update potential_slave set time_to_get_out_of_slavery = NULL ' +
+                                       f'where user_id ={slave};')
+                        database.commit()
+            except IndexError:
+                pass
+            except TypeError:
+                pass
 
 
 @BOT.command()
@@ -144,7 +196,7 @@ async def bite_ass(ctx, arg: discord.User):
     embed = discord.Embed(
         description=description,
         colour=discord.Colour.from_rgb(r, g, b))
-    if str(q) == "ALT-MIND#2787":
+    if str(q) == GOD:
         embed.set_image(url=NO)
     else:
         embed.set_image(url=gif)
@@ -256,24 +308,88 @@ async def update_db(ctx, arg):
 
 
 @BOT.command()
-async def warn(ctx, member, *args):
+async def warn(ctx, member: discord.Member, *args):
     await ctx.message.delete()
+
     if get(ctx.message.author.roles, name='Серый Кардинал') or get(ctx.message.author.roles, name='Памагат'):
         q = " ".join(args)
-        w = q.split(',')
-        reason = ""
-        for i in w:
+        new_evils = q.split(',')
+        with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
+            with database.cursor() as cursor:
+
+                cursor.execute(f"select warning_message_id from potential_slave where user_id = {member.id} ;")
+                if cursor.fetchall():
+
+                    cursor.execute(f'select warning_message_id,evils,number_of_correctional_labor,' +
+                                   f"number_of_warning from potential_slave where user_id ='{member.id}';")
+                    warn_message_id, db_evils, num_of_cor_labor, num_of_warn = cursor.fetchall()[0]
+                    alley_channel = BOT.get_channel(int(ALLEY_CHANNEL))
+                    warn_massage = await alley_channel.fetch_message(warn_message_id)
+                    evils = db_evils.split(',')
+                    for evil in new_evils:
+                        if evil not in db_evils:
+                            evils.append(evil)
+                    evils = ",".join(evils)
+
+                    if num_of_warn + len(new_evils) > 3:
+                        embed = discord.Embed(title="Карта нарушителя", color=0xff0000)
+                        embed.add_field(name="Нарушитель", value=member.mention, inline=True)
+                        embed.add_field(name="Количество отработок", value=num_of_cor_labor + 1,
+                                        inline=True)
+                        embed.add_field(name=" В данный момент в slave?", value=":white_check_mark:", inline=True)
+                        embed.add_field(name="Количество полученных предупреждений",
+                                        value="0", inline=False)
+                        embed.add_field(name="Нарушения:", value=evils.replace(',', '\n'), inline=False)
+                        await warn_massage.edit(embed=embed)
+                        time = datetime.isoformat(datetime.now(timezone.utc) +
+                                                  timedelta(hours=24 + 3), sep=' ').split('.')[0]
+                        cursor.execute(f"update potential_slave set time_to_get_out_of_slavery = '{time}', " +
+                                       f"evils = '{evils}'," +
+                                       f'number_of_warning = 0,' +
+                                       f'number_of_correctional_labor = {num_of_cor_labor + 1}' +
+                                       f" where user_id = '{member.id}';")
+                        database.commit()
+                        await member.add_roles(get(member.guild.roles, name="Slave"))
+
+                    else:
+                        embed = discord.Embed(title="Карта нарушителя", color=0xff8200)
+                        embed.add_field(name="Нарушитель", value=member.mention, inline=True)
+                        embed.add_field(name="Количество отработок", value=num_of_cor_labor,
+                                        inline=True)
+                        embed.add_field(name=" В данный момент в slave?", value=":negative_squared_cross_mark:",
+                                        inline=True)
+                        embed.add_field(name="Количество полученных предупреждений",
+                                        value=str(num_of_warn + len(new_evils)), inline=False)
+                        embed.add_field(name="Нарушения:", value=evils.replace(',', '\n'), inline=False)
+                        await warn_massage.edit(embed=embed)
+                        cursor.execute(f"update potential_slave set evils = '{evils}'," +
+                                       f" number_of_warning = {num_of_warn + len(new_evils)}" +
+                                       f" where user_id = '{member.id}';")
+                        database.commit()
+
+                else:
+                    embed = discord.Embed(title="Карта нарушителя", color=0xff8200)
+                    embed.add_field(name="Нарушитель", value=member.mention, inline=True)
+                    embed.add_field(name="Количество отработок", value='0',
+                                    inline=True)
+                    embed.add_field(name=" В данный момент в slave?", value=":negative_squared_cross_mark: ",
+                                    inline=True)
+                    embed.add_field(name="Количество полученных предупреждений",
+                                    value=str(len(new_evils)), inline=False)
+                    embed.add_field(name="Нарушения:", value="\n".join(new_evils), inline=False)
+                    alley_channel = BOT.get_channel(int(ALLEY_CHANNEL))
+                    warn_message = await alley_channel.send(embed=embed)
+                    cursor.execute(f"insert into potential_slave(user_id, warning_message_id," +
+                                   f"evils, number_of_warning, number_of_correctional_labor)" +
+                                   f" values('{member.id}', {warn_message.id}, '{','.join(new_evils)}'," +
+                                   f"{len(new_evils)}, 0) ")
+                    database.commit()
+
+        reason = ''
+        for i in new_evils:
             reason += i + '\n'
-        n = "\n"
-        await ctx.send(f'{member} был предупреждён {ctx.author.mention} Причина: {n + reason}')
-        embed = discord.Embed(title="Предупреждение")
-        embed.add_field(name="Модератор", value=ctx.author.mention)
-        embed.add_field(name="Предупреждённый", value=member)
-        embed.add_field(name="Время в UTC", value=str(ctx.message.created_at)[:-7])
-        embed.add_field(name="Причина", value=reason)
-        embed.colour = discord.Colour.red()
-        alley_channel = BOT.get_channel(825625052287467571)
-        await alley_channel.send(embed=embed)
+        n = '\n'
+        await ctx.send(f'{member.mention} был предупреждён {ctx.author.mention} Причина: {n + reason}')
 # -----------------moderation functions
 
 
