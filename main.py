@@ -369,22 +369,41 @@ async def warn(ctx, member: discord.Member, *args):
                         database.commit()
 
                 else:
-                    embed = discord.Embed(title="Карта нарушителя", color=0xff8200)
-                    embed.add_field(name="Нарушитель", value=member.mention, inline=True)
-                    embed.add_field(name="Количество отработок", value='0',
-                                    inline=True)
-                    embed.add_field(name=" В данный момент в slave?", value=":x: ",
-                                    inline=True)
-                    embed.add_field(name="Количество полученных предупреждений",
-                                    value=str(len(new_evils)), inline=False)
-                    embed.add_field(name="Нарушения:", value="\n".join(new_evils), inline=False)
-                    alley_channel = BOT.get_channel(int(ALLEY_CHANNEL))
-                    warn_message = await alley_channel.send(embed=embed)
-                    cursor.execute(f"insert into potential_slave(user_id, warning_message_id," +
-                                   f"evils, number_of_warning, number_of_correctional_labor)" +
-                                   f" values('{member.id}', {warn_message.id}, '{','.join(new_evils)}'," +
-                                   f"{len(new_evils)}, 0) ")
-                    database.commit()
+                    if len(new_evils) > 3:
+                        embed = discord.Embed(title="Карта нарушителя", color=0xff0000)
+                        embed.add_field(name="Нарушитель", value=member.mention, inline=True)
+                        embed.add_field(name="Количество отработок", value='1',
+                                        inline=True)
+                        embed.add_field(name=" В данный момент в slave?", value=":white_check_mark:",
+                                        inline=True)
+                        embed.add_field(name="Количество полученных предупреждений",
+                                        value='0', inline=False)
+                        embed.add_field(name="Нарушения:", value="\n".join(new_evils), inline=False)
+                        alley_channel = BOT.get_channel(int(ALLEY_CHANNEL))
+                        warn_message = await alley_channel.send(embed=embed)
+                        cursor.execute(f"insert into potential_slave(user_id, warning_message_id," +
+                                       f"evils, number_of_warning, number_of_correctional_labor)" +
+                                       f" values('{member.id}', {warn_message.id}, '{','.join(new_evils)}', 0, 1) ")
+                        database.commit()
+                        await member.add_roles(get(member.guild.roles, name="Slave"))
+                        await member.remove_roles(get(member.guild.roles, name="Корованщик"))
+                    else:
+                        embed = discord.Embed(title="Карта нарушителя", color=0xff8200)
+                        embed.add_field(name="Нарушитель", value=member.mention, inline=True)
+                        embed.add_field(name="Количество отработок", value='0',
+                                        inline=True)
+                        embed.add_field(name=" В данный момент в slave?", value=":x:",
+                                        inline=True)
+                        embed.add_field(name="Количество полученных предупреждений",
+                                        value=str(len(new_evils)), inline=False)
+                        embed.add_field(name="Нарушения:", value="\n".join(new_evils), inline=False)
+                        alley_channel = BOT.get_channel(int(ALLEY_CHANNEL))
+                        warn_message = await alley_channel.send(embed=embed)
+                        cursor.execute(f"insert into potential_slave(user_id, warning_message_id," +
+                                       f"evils, number_of_warning, number_of_correctional_labor)" +
+                                       f" values('{member.id}', {warn_message.id}, '{','.join(new_evils)}'," +
+                                       f"{len(new_evils)}, 0) ")
+                        database.commit()
 
         reason = ''
         for i in new_evils:
