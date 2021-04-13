@@ -152,6 +152,7 @@ async def job():
                         warn_message = await alley_channel.fetch_message(warn_message_id)
                         member = await GUILD.fetch_member(slave)
                         await member.remove_roles(get(member.guild.roles, name="Slave"))
+                        await member.add_roles(get(member.guild.roles, name="Корованщик"))
                         embed = discord.Embed(title="Карта нарушителя", color=0xcbff00)
                         embed.add_field(name="Нарушитель", value=member.mention, inline=True)
                         embed.add_field(name="Количество отработок", value=num_of_cor_labor,
@@ -350,7 +351,7 @@ async def warn(ctx, member: discord.Member, *args):
                                        f" where user_id = '{member.id}';")
                         database.commit()
                         await member.add_roles(get(member.guild.roles, name="Slave"))
-
+                        await member.remove_roles(get(member.guild.roles, name="Корованщик"))
                     else:
                         embed = discord.Embed(title="Карта нарушителя", color=0xff8200)
                         embed.add_field(name="Нарушитель", value=member.mention, inline=True)
