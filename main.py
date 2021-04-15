@@ -1,7 +1,7 @@
 import os
-import ast
 import psycopg2
 import asyncio
+import ast
 import discord
 import dropbox
 from datetime import datetime, timedelta, timezone
@@ -17,13 +17,13 @@ STORAGE_TOKEN = os.environ['STORAGE_TOKEN']
 DATABASE_URL = os.environ['DATABASE_URL']
 
 GOD = os.environ['GOD']
-MODERATORS = ast.literal_eval(os.environ['MODERATORS'])
 UNIVERSAL_ANSWER = os.environ['UNIVERSAL_ANSWER']
 NO = os.environ['NO_NO_NO']
 
 GUILD = None
 GUILD_ID = os.environ['GUILD_ID']
 ALLEY_CHANNEL = os.environ['ALLEY_CHANNEL']
+REACT_TO_ROLE_CHANNEL = int(os.environ['REACT_TO_ROLE_CHANNEL'])
 INTENTS = discord.Intents.all()
 BOT = commands.Bot(command_prefix='|', help_command=None, intents=INTENTS)
 STORAGE = dropbox.Dropbox(STORAGE_TOKEN)
@@ -127,6 +127,40 @@ async def on_command_error(ctx, error):
         await message.delete()
 
 
+@BOT.event
+async def on_raw_reaction_add(payload):
+    if payload.channel_id == REACT_TO_ROLE_CHANNEL:
+        with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
+            with database.cursor() as cursor:
+                cursor.execute(f"select date from react_to_role where message_id = {payload.message_id}")
+                try:
+                    date = ast.literal_eval(cursor.fetchone()[0])
+                    date = dict(zip(date.values(), date.keys()))
+                except ValueError:
+                    pass
+                except TypeError:
+                    pass
+                else:
+                    await payload.member.add_roles(get(payload.member.guild.roles, name=date[payload.emoji.name]))
+
+
+@BOT.event
+async def on_raw_reaction_remove(payload):
+    if payload.channel_id == REACT_TO_ROLE_CHANNEL:
+        with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
+            with database.cursor() as cursor:
+                cursor.execute(f"select date from react_to_role where message_id = {payload.message_id}")
+                try:
+                    date = ast.literal_eval(cursor.fetchone()[0])
+                    date = dict(zip(date.values(), date.keys()))
+                except ValueError:
+                    pass
+                else:
+                    guild = BOT.get_guild(payload.guild_id)
+                    member = await guild.fetch_member(payload.user_id)
+                    await member.remove_roles(get(member.guild.roles, name=date[payload.emoji.name]))
+
+
 @tasks.loop(seconds=10)
 async def job():
     global GUILD
@@ -178,7 +212,7 @@ async def help(ctx):
     if ctx.message.author.name + '#' + ctx.message.author.discriminator in GOD:
         embed = HELP.god_template(set_rand_color())
         await ctx.author.send(embed=embed)
-    elif ctx.message.author.name + '#' + ctx.message.author.discriminator in MODERATORS:
+    elif get(ctx.message.author.roles, name='Серый Кардинал') or get(ctx.message.author.roles, name='Памагат'):
         embed = HELP.moderator_template(set_rand_color())
         await ctx.author.send(embed=embed)
     else:
@@ -298,11 +332,12 @@ async def evening(ctx, arg):
     await ctx.send(embed=embed)
 # -----------------social interaction
 
+
 # -----------------moderation functions
 @BOT.command()
 async def update_db(ctx, arg):
     await ctx.message.delete()
-    if ctx.message.author.name + '#' + ctx.message.author.discriminator in MODERATORS:
+    if get(ctx.message.author.roles, name='Серый Кардинал') or get(ctx.message.author.roles, name='Памагат'):
         await ctx.author.send('Обновляю базу данных')
         await put_update(arg)
         await ctx.author.send('База данных обновленна')
@@ -311,7 +346,6 @@ async def update_db(ctx, arg):
 @BOT.command()
 async def warn(ctx, member: discord.Member, *args):
     await ctx.message.delete()
-
     if get(ctx.message.author.roles, name='Серый Кардинал') or get(ctx.message.author.roles, name='Памагат'):
         q = " ".join(args)
         new_evils = q.split(',')
@@ -410,6 +444,25 @@ async def warn(ctx, member: discord.Member, *args):
             reason += i + '\n'
         n = '\n'
         await ctx.send(f'{member.mention} был предупреждён {ctx.author.mention} Причина: {n + reason}')
+
+
+@BOT.command()
+async def react_to_role(ctx, title, *args):
+    await ctx.message.delete()
+    if get(ctx.message.author.roles, name='Серый Кардинал') or get(ctx.message.author.roles, name='Памагат'):
+        date = {x.split(',')[0]: x.split(',')[1] for x in args}
+        description = ""
+        for text in date:
+            description += date[text] + " " + text + '\n'
+        embed = discord.Embed(title=title, description=description, color=discord.Colour.random())
+        message = await ctx.send(embed=embed)
+        for emoji in date:
+            await message.add_reaction(date[emoji])
+        with closing(psycopg2.connect(DATABASE_URL, sslmode='require')) as database:
+            with database.cursor() as cursor:
+                cursor.execute(f"insert into react_to_role values({message.id}, " +
+                               f"'{str(date).replace(chr(39), chr(34))}');")
+                database.commit()
 # -----------------moderation functions
 
 
@@ -422,5 +475,6 @@ async def regenerate_db(ctx):
         await re_gen_db()
         await ctx.author.send('Регенерация прошла успешно')
 # ----------------- gods functions
+
 
 BOT.run(TOKEN)
