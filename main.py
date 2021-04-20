@@ -265,16 +265,29 @@ async def press_f(ctx, arg):
 
 
 @BOT.command()
-async def hug(ctx, arg):
+async def hug(ctx, arg: discord.User):
     await ctx.message.delete()
-    gif = await get_gif('hug')
-    description = f':hugging:  {ctx.message.author.mention} обнимает {arg} :hugging: '
-    r, g, b = set_rand_color()
-    embed = discord.Embed(
-        description=description,
-        colour=discord.Colour.from_rgb(r, g, b))
-    embed.set_image(url=gif)
-    await ctx.send(embed=embed)
+    title = "Обнимашки"
+    if ctx.message.author == arg:
+        gif = "https://media.giphy.com/media/Q5FpyePxey4EG4ek30/giphy.gif"
+        description = f':hugging:  {ctx.message.author.mention} обнимает себя любимого :hugging: '
+        r, g, b = set_rand_color()
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            colour=discord.Colour.from_rgb(r, g, b))
+        embed.set_image(url=gif)
+        await ctx.send(embed=embed)
+    else:
+        gif = await get_gif('hug')
+        description = f':hugging: {ctx.message.author.mention} обнимает {arg.mention} :hugging: '
+        r, g, b = set_rand_color()
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            colour=discord.Colour.from_rgb(r, g, b))
+        embed.set_image(url=gif)
+        await ctx.send(embed=embed)
 
 
 @BOT.command()
