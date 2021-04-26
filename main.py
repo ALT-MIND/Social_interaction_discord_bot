@@ -155,6 +155,8 @@ async def on_raw_reaction_remove(payload):
                     date = dict(zip(date.values(), date.keys()))
                 except ValueError:
                     pass
+                except TypeError:
+                    pass
                 else:
                     guild = BOT.get_guild(payload.guild_id)
                     member = await guild.fetch_member(payload.user_id)
